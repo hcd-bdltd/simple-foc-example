@@ -1,16 +1,29 @@
 #include <Arduino.h>
 
-// put function declarations here:
-int myFunction(int, int);
+float target = 0.0;
+
+void serial_loop(void) {
+        static String str;
+
+        while (Serial.available()) {
+                char ch = (char) Serial.read();
+                str += ch;
+
+                if (ch == '\n')
+                {
+                        target = str.toFloat();
+                        Serial.print("Target: ");
+                        Serial.println(target);
+                        str = "";
+                }
+
+        }
+}
 
 void setup() {
-  // put your setup code here, to run once:
-  int result = myFunction(2, 3);
+        Serial.begin(115200);
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
+        serial_loop();
 }
-
-// put function definitions here:
-int myFunction(int x, int y) { return x + y; }
