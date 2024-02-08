@@ -1,12 +1,21 @@
 /**
  *
- * Torque control example using voltage control loop.
+ * Position/angle motion control example
+ * Steps:
+ * 1) Configure the motor and hall sensor
+ * 2) Run the code
+ * 3) Set the target angle (in radians) from serial terminal
  *
- * Most of the low-end BLDC driver boards doesn't have current measurement therefore SimpleFOC offers
- * you a way to control motor torque by setting the voltage to the motor instead of the current.
  *
- * This makes the BLDC motor effectively a DC motor, and you can use it in a same way.
+ * NOTE :
+ * > This is for Arduino UNO example code for running angle motion control specifically
+ * > Since Arduino UNO doesn't have enough interrupt pins we have to use software interrupt library PciManager.
+ *
+ * > If running this code with Nucleo or Bluepill or any other board which has more than 2 interrupt pins
+ * > you can supply doIndex directly to the sensor.enableInterrupts(doA,doB,doC) and avoid using PciManager
+ *
  */
+
 #include <SimpleFOC.h>
 
 #define POLE_PAIRS 7
@@ -19,16 +28,15 @@ BLDCDriver6PWM driver = BLDCDriver6PWM(A_PHASE_UH, A_PHASE_UL, A_PHASE_VH, A_PHA
 HallSensor sensor = HallSensor(A_HALL1, A_HALL2, A_HALL3, POLE_PAIRS);
 
 // Interrupt routine initialisation
-// channel A and B callbacks
 void doA(){sensor.handleA();}
 void doB(){sensor.handleB();}
 void doC(){sensor.handleC();}
 
-// voltage set point variable
-float target_voltage = 2;
+// angle set point variable
+float target_angle = 0;
 // instantiate the commander
 Commander command = Commander(Serial);
-void doTarget(char* cmd) { command.scalar(&target_voltage, cmd); }
+void doTarget(char* cmd) { command.scalar(&target_angle, cmd); }
 
 void setup() {
         Serial.begin(115200);
@@ -44,18 +52,34 @@ void setup() {
         // power supply voltage [V]
         driver.voltage_power_supply = 12;
         driver.init();
-        // link driver
+        // link the motor and the driver
         motor.linkDriver(&driver);
 
-
-        // aligning voltage
+        // aligning voltage [V]
         motor.voltage_sensor_align = 3;
-
-        // choose FOC modulation (optional)
-        motor.foc_modulation = FOCModulationType::SpaceVectorPWM;
+        // index search velocity [rad/s]
+        motor.velocity_index_search = 3;
 
         // set motion control loop to be used
-        motor.controller = MotionControlType::torque;
+        motor.controller = MotionControlType::angle;
+
+        // velocity PI controller parameters
+        motor.PID_velocity.P = 0.2f;
+        motor.PID_velocity.I = 2;
+        motor.PID_velocity.D = 0;
+        // default voltage_power_supply
+        motor.voltage_limit = 6;
+        // jerk control using voltage voltage ramp
+        // default value is 300 volts per sec  ~ 0.3V per millisecond
+        motor.PID_velocity.output_ramp = 1000;
+
+        // velocity low pass filtering time constant
+        motor.LPF_velocity.Tf = 0.01f;
+
+        // angle P controller
+        motor.P_angle.P = 20;
+        // maximal velocity of the position control
+        motor.velocity_limit = 4;
 
         // use monitoring with serial
         motor.useMonitoring(Serial);
@@ -66,25 +90,29 @@ void setup() {
         motor.initFOC();
 
         // add target command T
-        command.add('T', doTarget, "target voltage");
+        command.add('T', doTarget, "target angle");
 
         Serial.println(F("Motor ready."));
-        Serial.println(F("Set the target voltage using serial terminal:"));
-        delay(1000);
+        Serial.println(F("Set the target angle using serial terminal:"));
 }
+
 
 void loop() {
         // main FOC algorithm function
         // the faster you run this function the better
-        // Arduino UNO loop  ~1kHz
-        // Bluepill loop ~10kHz
+        // Arduino UNO loop  ~1kHz (16 MHz)
+        // Bluepill loop ~10kHz (72 MHz)
         motor.loopFOC();
 
         // Motion control function
         // velocity, position or voltage (defined in motor.controller)
         // this function can be run at much lower frequency than loopFOC() function
         // You can also use motor.move() and set the motor.target in the code
-        motor.move(target_voltage);
+        motor.move(target_angle);
+
+        // function intended to be used with serial plotter to monitor motor variables
+        // significantly slowing the execution down!!!!
+        // motor.monitor();
 
         // user communication
         command.run();
