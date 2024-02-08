@@ -1,18 +1,5 @@
 /**
- *
- * Position/angle motion control example
- * Steps:
- * 1) Configure the motor and hall sensor
- * 2) Run the code
- * 3) Set the target angle (in radians) from serial terminal
- *
- *
- * NOTE :
- * > This is for Arduino UNO example code for running angle motion control specifically
- * > Since Arduino UNO doesn't have enough interrupt pins we have to use software interrupt library PciManager.
- *
- * > If running this code with Nucleo or Bluepill or any other board which has more than 2 interrupt pins
- * > you can supply doIndex directly to the sensor.enableInterrupts(doA,doB,doC) and avoid using PciManager
+ * B-G431B-ESC1 position motion control example with hall sensor
  *
  */
 
@@ -23,6 +10,7 @@
 // BLDC motor & driver instance
 BLDCMotor motor = BLDCMotor(POLE_PAIRS);
 BLDCDriver6PWM driver = BLDCDriver6PWM(A_PHASE_UH, A_PHASE_UL, A_PHASE_VH, A_PHASE_VL, A_PHASE_WH, A_PHASE_WL);
+LowsideCurrentSense currentSense = LowsideCurrentSense(0.003f, -64.0f/7.0f, A_OP1_OUT, A_OP2_OUT, A_OP3_OUT);
 
 // hall sensor instance
 HallSensor sensor = HallSensor(A_HALL1, A_HALL2, A_HALL3, POLE_PAIRS);
@@ -36,7 +24,11 @@ void doC(){sensor.handleC();}
 float target_angle = 0;
 // instantiate the commander
 Commander command = Commander(Serial);
-void doTarget(char* cmd) { command.scalar(&target_angle, cmd); }
+void doTarget(char* cmd) {
+        float angle_degrees;
+        command.scalar(&angle_degrees, cmd);
+        target_angle = angle_degrees * (PI / 180.0);
+}
 
 void setup() {
         Serial.begin(115200);
@@ -54,6 +46,14 @@ void setup() {
         driver.init();
         // link the motor and the driver
         motor.linkDriver(&driver);
+        // link current sense and the driver
+        currentSense.linkDriver(&driver);
+
+        // current sensing
+        currentSense.init();
+        // no need for aligning
+        currentSense.skip_align = true;
+        motor.linkCurrentSense(&currentSense);
 
         // aligning voltage [V]
         motor.voltage_sensor_align = 3;
@@ -90,18 +90,17 @@ void setup() {
         motor.initFOC();
 
         // add target command T
-        command.add('T', doTarget, "target angle");
+        command.add('T', doTarget, "target angle [deg]");
 
         Serial.println(F("Motor ready."));
         Serial.println(F("Set the target angle using serial terminal:"));
 }
 
-
 void loop() {
         // main FOC algorithm function
         // the faster you run this function the better
-        // Arduino UNO loop  ~1kHz (16 MHz)
-        // Bluepill loop ~10kHz (72 MHz)
+        // Arduino UNO loop  ~1kHz
+        // Bluepill loop ~10kHz
         motor.loopFOC();
 
         // Motion control function
