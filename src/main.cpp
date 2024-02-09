@@ -5,7 +5,8 @@
 
 #include <SimpleFOC.h>
 
-#define POLE_PAIRS 7
+#define _MON_EVERYTHING (0b1111111)
+#define POLE_PAIRS      (7)
 
 // BLDC motor & driver instance
 BLDCMotor motor = BLDCMotor(POLE_PAIRS);
@@ -82,6 +83,9 @@ void setup() {
         motor.velocity_limit = 4;
 
         // use monitoring with serial
+        motor.monitor_separator = '\t';
+        motor.monitor_decimals = 2;
+        motor.monitor_variables = _MON_EVERYTHING;
         motor.useMonitoring(Serial);
 
         // initialize motor
@@ -111,7 +115,7 @@ void loop() {
 
         // function intended to be used with serial plotter to monitor motor variables
         // significantly slowing the execution down!!!!
-        // motor.monitor();
+        motor.monitor();
 
         // user communication
         command.run();
