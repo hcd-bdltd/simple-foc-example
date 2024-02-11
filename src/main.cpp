@@ -5,7 +5,7 @@
 
 #include <SimpleFOC.h>
 
-#define _MON_EVERYTHING (0b1111111)
+#define _MON_ALL        (0b1111111)
 #define POLE_PAIRS      (7)
 
 // BLDC motor & driver instance
@@ -85,7 +85,7 @@ void setup() {
         // use monitoring with serial
         motor.monitor_separator = '\t';
         motor.monitor_decimals = 2;
-        motor.monitor_variables = _MON_EVERYTHING;
+        motor.monitor_variables = _MON_ALL;
         motor.useMonitoring(Serial);
 
         // initialize motor
