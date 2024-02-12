@@ -7,6 +7,9 @@
 
 #define _MON_ALL        (0b1111111)
 #define POLE_PAIRS      (7)
+#define MONITOR_WAIT_MS (50)
+
+uint32_t last_monitor_ms = 0;
 
 // BLDC motor & driver instance
 BLDCMotor motor = BLDCMotor(POLE_PAIRS);
@@ -33,7 +36,6 @@ void doTarget(char* cmd) {
 
 void setup() {
         Serial.begin(921600);
-        delay(2000);
 
         // initialize hall sensor hardware
         sensor.init();
@@ -83,6 +85,7 @@ void setup() {
         motor.velocity_limit = 4;
 
         // use monitoring with serial
+        motor.monitor_downsample = 1;
         motor.monitor_separator = '\t';
         motor.monitor_decimals = 2;
         motor.monitor_variables = _MON_ALL;
@@ -98,13 +101,15 @@ void setup() {
 
         Serial.println(F("Motor ready."));
         Serial.println(F("Set the target angle using serial terminal:"));
+
+        last_monitor_ms = millis();
 }
 
 void loop() {
         // main FOC algorithm function
         // the faster you run this function the better
-        // Arduino UNO loop  ~1kHz
-        // Bluepill loop ~10kHz
+        // Arduino UNO loop ~1kHz (16 Mhz)
+        // Bluepill loop ~10kHz (72Mhz)
         motor.loopFOC();
 
         // Motion control function
@@ -113,9 +118,12 @@ void loop() {
         // You can also use motor.move() and set the motor.target in the code
         motor.move(target_angle);
 
-        // function intended to be used with serial plotter to monitor motor variables
-        // significantly slowing the execution down!!!!
-        motor.monitor();
+        if (millis() - last_monitor_ms > MONITOR_WAIT_MS) {
+                last_monitor_ms = millis();
+                // function intended to be used with serial plotter to monitor motor variables
+                // significantly slowing the execution down!!!!
+                motor.monitor();
+        }
 
         // user communication
         command.run();
