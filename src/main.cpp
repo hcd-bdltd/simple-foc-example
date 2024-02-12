@@ -43,7 +43,7 @@ void setup() {
 
         // driver config
         // power supply voltage [V]
-        driver.voltage_power_supply = 12;
+        driver.voltage_power_supply = 24;
         driver.init();
         // link the motor and the driver
         motor.linkDriver(&driver);
@@ -69,7 +69,7 @@ void setup() {
         motor.PID_velocity.I = 2;
         motor.PID_velocity.D = 0;
         // default voltage_power_supply
-        motor.voltage_limit = 6;
+        motor.voltage_limit = 12;
         // jerk control using voltage voltage ramp
         // default value is 300 volts per sec  ~ 0.3V per millisecond
         motor.PID_velocity.output_ramp = 1000;
