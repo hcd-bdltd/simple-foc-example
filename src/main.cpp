@@ -35,7 +35,7 @@ void doTarget(char* cmd) {
 }
 
 void setup() {
-        Serial.begin(921600);
+        Serial.begin(115200);
 
         // initialize hall sensor hardware
         sensor.init();
