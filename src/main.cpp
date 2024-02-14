@@ -5,90 +5,84 @@
 
 #include <SimpleFOC.h>
 
-#define _MON_ALL        (0b1111111)
-#define POLE_PAIRS      (7)
-#define MONITOR_WAIT_MS (50)
-
-uint32_t last_monitor_ms = 0;
-
-// BLDC motor & driver instance
-BLDCMotor motor = BLDCMotor(POLE_PAIRS);
+// FOC classes (motor, driver, current sensor and hall sensor)
+BLDCMotor motor = BLDCMotor(7);
 BLDCDriver6PWM driver = BLDCDriver6PWM(A_PHASE_UH, A_PHASE_UL, A_PHASE_VH, A_PHASE_VL, A_PHASE_WH, A_PHASE_WL);
-LowsideCurrentSense currentSense = LowsideCurrentSense(0.003f, -64.0f/7.0f, A_OP1_OUT, A_OP2_OUT, A_OP3_OUT);
-
-// hall sensor instance
-HallSensor sensor = HallSensor(A_HALL1, A_HALL2, A_HALL3, POLE_PAIRS);
+LowsideCurrentSense current_sensor = LowsideCurrentSense(0.003f, -64.0f/7.0f, A_OP1_OUT, A_OP2_OUT, A_OP3_OUT);
+HallSensor hall_sensor = HallSensor(A_HALL1, A_HALL2, A_HALL3, 7);
 
 // Interrupt routine initialisation
-void doA(){sensor.handleA();}
-void doB(){sensor.handleB();}
-void doC(){sensor.handleC();}
+void doA(){ hall_sensor.handleA(); }
+void doB(){ hall_sensor.handleB(); }
+void doC(){ hall_sensor.handleC(); }
 
 // angle set point variable
-float target_angle = 0;
+float target = 0;
 // instantiate the commander
-Commander command = Commander(Serial);
-void doTarget(char* cmd) {
+Commander commander = Commander(Serial);
+void doMotor(char* cmd) { commander.motor(&motor, cmd); }
+void doRadians(char* cmd) { commander.scalar(&target, cmd); }
+void doDegrees(char* cmd) {
         float angle_degrees;
-        command.scalar(&angle_degrees, cmd);
-        target_angle = angle_degrees * (PI / 180.0);
+        commander.scalar(&angle_degrees, cmd);
+        target = angle_degrees * (PI / 180.0);
 }
 
 void setup() {
         Serial.begin(115200);
 
-        // initialize hall sensor hardware
-        sensor.init();
-        sensor.enableInterrupts(doA, doB, doC);
-        // link the motor to the sensor
-        motor.linkSensor(&sensor);
+        // initialize the hall sensor
+        hall_sensor.init();
+        hall_sensor.enableInterrupts(doA, doB, doC);
+        // link the hall sensor to the motor
+        motor.linkSensor(&hall_sensor);
 
-        // driver config
-        // power supply voltage [V]
-        driver.voltage_power_supply = 24;
+        // initialize the driver
+        driver.voltage_power_supply = 24.0f;
         driver.init();
+        // link the current sensor and the driver
+        current_sensor.linkDriver(&driver);
         // link the motor and the driver
         motor.linkDriver(&driver);
-        // link current sense and the driver
-        currentSense.linkDriver(&driver);
 
-        // current sensing
-        currentSense.init();
-        // no need for aligning
-        currentSense.skip_align = true;
-        motor.linkCurrentSense(&currentSense);
-
-        // aligning voltage [V]
-        motor.voltage_sensor_align = 3;
-        // index search velocity [rad/s]
-        motor.velocity_index_search = 3;
+        // initialize the current sensor
+        current_sensor.skip_align = true;
+        current_sensor.init();
+        // link the current sensor to the motor
+        motor.linkCurrentSense(&current_sensor);
 
         // set motion control loop to be used
         motor.controller = MotionControlType::angle;
+        motor.foc_modulation = FOCModulationType::SpaceVectorPWM;
 
-        // velocity PI controller parameters
+        // index search velocity [rad/s]
+        motor.velocity_index_search = 3.0f;
+        // aligning voltage [V]
+        motor.voltage_sensor_align = 3.0f;
+
+        // velocity PI controller
         motor.PID_velocity.P = 0.2f;
-        motor.PID_velocity.I = 2;
-        motor.PID_velocity.D = 0;
-        // default voltage_power_supply
-        motor.voltage_limit = 12;
-        // jerk control using voltage voltage ramp
-        // default value is 300 volts per sec  ~ 0.3V per millisecond
-        motor.PID_velocity.output_ramp = 1000;
-
-        // velocity low pass filtering time constant
-        motor.LPF_velocity.Tf = 0.01f;
+        motor.PID_velocity.I = 2.0f;
+        motor.PID_velocity.D = 0.0f;
+        motor.PID_velocity.output_ramp = 1000.0f;
+        motor.LPF_velocity.Tf = 0.05f;
 
         // angle P controller
-        motor.P_angle.P = 20;
-        // maximal velocity of the position control
-        motor.velocity_limit = 4;
+        motor.P_angle.P = 20.0f;
+
+        // motor limits
+        motor.voltage_limit = 12.0f;
+        motor.velocity_limit = 4.0f;
+        motor.current_limit = 1.0f;
+
+        // motion and monitoring settings
+        motor.motion_downsample = 0;
+        motor.monitor_downsample = 10000;
 
         // use monitoring with serial
-        motor.monitor_downsample = 1;
         motor.monitor_separator = '\t';
         motor.monitor_decimals = 2;
-        motor.monitor_variables = _MON_ALL;
+        motor.monitor_variables = 0b1111111;
         motor.useMonitoring(Serial);
 
         // initialize motor
@@ -96,13 +90,15 @@ void setup() {
         // align sensor and start FOC
         motor.initFOC();
 
-        // add target command T
-        command.add('T', doTarget, "target angle [deg]");
+        // initialize serial communication
+        commander.verbose = VerboseMode::user_friendly;
+        commander.add('m',doMotor,"motor");
+        commander.add('r', doRadians, "target angle [rad]");
+        commander.add('d', doDegrees, "target angle [deg]");
 
         Serial.println(F("Motor ready."));
         Serial.println(F("Set the target angle using serial terminal:"));
-
-        last_monitor_ms = millis();
+        _delay(1000);
 }
 
 void loop() {
@@ -116,15 +112,12 @@ void loop() {
         // velocity, position or voltage (defined in motor.controller)
         // this function can be run at much lower frequency than loopFOC() function
         // You can also use motor.move() and set the motor.target in the code
-        motor.move(target_angle);
+        motor.move(target);
 
-        if (millis() - last_monitor_ms > MONITOR_WAIT_MS) {
-                last_monitor_ms = millis();
-                // function intended to be used with serial plotter to monitor motor variables
-                // significantly slowing the execution down!!!!
-                motor.monitor();
-        }
+        // function intended to be used with serial plotter to monitor motor variables
+        // significantly slowing the execution down!!!!
+        motor.monitor();
 
         // user communication
-        command.run();
+        commander.run();
 }
