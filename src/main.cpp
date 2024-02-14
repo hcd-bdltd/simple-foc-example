@@ -28,8 +28,20 @@ void doDegrees(char* cmd) {
         target = angle_degrees * (PI / 180.0);
 }
 
+void checkRC(int rc) {
+        if (rc == 0) {
+                for(;;) {
+                        SIMPLEFOC_DEBUG("Setup failed.");
+                        SIMPLEFOC_DEBUG("Check motor and sensor connections.");
+                        _delay(1000);
+                }
+        }
+}
+
 void setup() {
+        int rc = 0;
         Serial.begin(115200);
+        SimpleFOCDebug::enable(&Serial);
 
         // initialize the hall sensor
         hall_sensor.init();
@@ -39,7 +51,8 @@ void setup() {
 
         // initialize the driver
         driver.voltage_power_supply = 24.0f;
-        driver.init();
+        rc = driver.init();
+        checkRC(rc); SIMPLEFOC_DEBUG("Driver ready.");
         // link the current sensor and the driver
         current_sensor.linkDriver(&driver);
         // link the motor and the driver
@@ -47,7 +60,8 @@ void setup() {
 
         // initialize the current sensor
         current_sensor.skip_align = true;
-        current_sensor.init();
+        rc = current_sensor.init();
+        checkRC(rc); SIMPLEFOC_DEBUG("Current sensor ready.");
         // link the current sensor to the motor
         motor.linkCurrentSense(&current_sensor);
 
@@ -73,7 +87,7 @@ void setup() {
         // motor limits
         motor.voltage_limit = 12.0f;
         motor.velocity_limit = 4.0f;
-        motor.current_limit = 1.0f;
+        motor.current_limit = 2.0f;
 
         // motion and monitoring settings
         motor.motion_downsample = 0;
@@ -88,16 +102,17 @@ void setup() {
         // initialize motor
         motor.init();
         // align sensor and start FOC
-        motor.initFOC();
+        rc = motor.initFOC();
+        checkRC(rc); SIMPLEFOC_DEBUG("Motor ready.");
 
         // initialize serial communication
         commander.verbose = VerboseMode::user_friendly;
         commander.add('m',doMotor,"motor");
-        commander.add('r', doRadians, "target angle [rad]");
-        commander.add('d', doDegrees, "target angle [deg]");
+        commander.add('r', doRadians, "angle [rad]");
+        commander.add('d', doDegrees, "angle [deg]");
 
-        Serial.println(F("Motor ready."));
-        Serial.println(F("Set the target angle using serial terminal:"));
+        SIMPLEFOC_DEBUG("Setup ready.");
+        SIMPLEFOC_DEBUG("Set the target angle using serial terminal:");
         _delay(1000);
 }
 
