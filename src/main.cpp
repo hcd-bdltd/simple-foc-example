@@ -17,12 +17,11 @@ void doB(){ hall_sensor.handleB(); }
 void doC(){ hall_sensor.handleC(); }
 
 // angle set point variable
-float target = 0;
+float target = 0.0f;
 // instantiate the commander
 Commander commander = Commander(Serial);
 void doMotor(char* cmd) { commander.motor(&motor, cmd); }
-void doRadians(char* cmd) { commander.scalar(&target, cmd); }
-void doDegrees(char* cmd) {
+void doTarget(char* cmd) {
         float angle_degrees;
         commander.scalar(&angle_degrees, cmd);
         target = angle_degrees * (PI / 180.0);
@@ -107,9 +106,8 @@ void setup() {
 
         // initialize serial communication
         commander.verbose = VerboseMode::user_friendly;
-        commander.add('m',doMotor,"motor");
-        commander.add('r', doRadians, "angle [rad]");
-        commander.add('d', doDegrees, "angle [deg]");
+        commander.add('M',doMotor,"motor");
+        commander.add('T', doTarget, "target [deg]");
 
         SIMPLEFOC_DEBUG("Setup ready.");
         SIMPLEFOC_DEBUG("Set the target angle using serial terminal:");
