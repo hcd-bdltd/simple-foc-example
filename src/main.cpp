@@ -96,7 +96,7 @@ void setup() {
 
         // motion and monitoring settings
         motor.motion_downsample = 0;
-        motor.monitor_downsample = 100;
+        motor.monitor_downsample = 1;
 
         // use monitoring with serial
         motor.monitor_separator = '\t';
