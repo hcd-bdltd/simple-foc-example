@@ -88,7 +88,7 @@ void setup() {
 
         // motor limits
         motor.voltage_limit = 12.0f;
-        motor.velocity_limit = 4.0f;
+        motor.velocity_limit = 100.0f;
         motor.current_limit = 2.0f;
 
         // motion and monitoring settings
