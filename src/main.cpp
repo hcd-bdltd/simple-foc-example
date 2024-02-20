@@ -16,6 +16,9 @@ void doA(){ hall_sensor.handleA(); }
 void doB(){ hall_sensor.handleB(); }
 void doC(){ hall_sensor.handleC(); }
 
+// monitor delay
+#define MONITOR_DELAY_MS (20)
+unsigned long monitor_delay = 0;
 // angle set point variable
 float target = 0.0f;
 // instantiate the commander
@@ -87,13 +90,13 @@ void setup() {
         motor.P_angle.P = 20.0f;
 
         // motor limits
-        motor.voltage_limit = 12.0f;
-        motor.velocity_limit = 100.0f;
-        motor.current_limit = 2.0f;
+        motor.voltage_limit = 24.0f;
+        motor.velocity_limit = 200.0f;
+        motor.current_limit = 1.0f;
 
         // motion and monitoring settings
         motor.motion_downsample = 0;
-        motor.monitor_downsample = 10000;
+        motor.monitor_downsample = 100;
 
         // use monitoring with serial
         motor.monitor_separator = '\t';
@@ -117,6 +120,7 @@ void setup() {
         SIMPLEFOC_DEBUG("Setup ready.");
         SIMPLEFOC_DEBUG("Set the target angle using serial terminal:");
         _delay(1000);
+        monitor_delay = millis();
 }
 
 void loop() {
@@ -132,9 +136,12 @@ void loop() {
         // You can also use motor.move() and set the motor.target in the code
         motor.move(target);
 
-        // function intended to be used with serial plotter to monitor motor variables
-        // significantly slowing the execution down!!!!
-        motor.monitor();
+        if (millis() - monitor_delay > MONITOR_DELAY_MS) {
+                monitor_delay = millis();
+                // function intended to be used with serial plotter to monitor motor variables
+                // significantly slowing the execution down!!!!
+                motor.monitor();
+        }
 
         // user communication
         commander.run();
