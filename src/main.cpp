@@ -21,7 +21,8 @@ float target = 0.0f;
 // instantiate the commander
 Commander commander = Commander(Serial);
 void doMotor(char* cmd) { commander.motor(&motor, cmd); }
-void doTarget(char* cmd) {
+void doRadians(char* cmd) { commander.scalar(&target, cmd); };
+void doDegrees(char* cmd) {
         float angle_degrees;
         commander.scalar(&angle_degrees, cmd);
         target = angle_degrees * (PI / 180.0);
@@ -51,7 +52,8 @@ void setup() {
         // initialize the driver
         driver.voltage_power_supply = 24.0f;
         rc = driver.init();
-        checkRC(rc); SIMPLEFOC_DEBUG("Driver ready.");
+        checkRC(rc);
+        SIMPLEFOC_DEBUG("Driver ready.");
         // link the current sensor and the driver
         current_sensor.linkDriver(&driver);
         // link the motor and the driver
@@ -60,7 +62,8 @@ void setup() {
         // initialize the current sensor
         current_sensor.skip_align = true;
         rc = current_sensor.init();
-        checkRC(rc); SIMPLEFOC_DEBUG("Current sensor ready.");
+        checkRC(rc);
+        SIMPLEFOC_DEBUG("Current sensor ready.");
         // link the current sensor to the motor
         motor.linkCurrentSense(&current_sensor);
 
@@ -102,12 +105,14 @@ void setup() {
         motor.init();
         // align sensor and start FOC
         rc = motor.initFOC();
-        checkRC(rc); SIMPLEFOC_DEBUG("Motor ready.");
+        checkRC(rc);
+        SIMPLEFOC_DEBUG("Motor ready.");
 
         // initialize serial communication
         commander.verbose = VerboseMode::user_friendly;
         commander.add('M',doMotor,"motor");
-        commander.add('T', doTarget, "target [deg]");
+        commander.add('R', doRadians, "target [rad]");
+        commander.add('D', doDegrees, "target [deg]");
 
         SIMPLEFOC_DEBUG("Setup ready.");
         SIMPLEFOC_DEBUG("Set the target angle using serial terminal:");
