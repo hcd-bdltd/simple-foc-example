@@ -74,6 +74,9 @@ dkms.conf
 
 # Executables
 
+### Clangd ###
+.cache/
+
 ### PlatformIO ###
 .pioenvs
 .piolibdeps

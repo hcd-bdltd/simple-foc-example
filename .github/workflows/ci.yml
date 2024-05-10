@@ -1,26 +1,30 @@
 name: PlatformIO CI
 
+permissions: read-all
+
 on:
-        pull_request:
-                branches: ["main"]
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
-        build:
-                runs-on: ubuntu-latest
+  build:
+    runs-on: ubuntu-latest
 
-                steps:
-                        - uses: actions/checkout@v3
-                        - uses: actions/cache@v3
-                          with:
-                                  path: |
-                                          ~/.cache/pip
-                                          ~/.platformio/.cache
-                                  key: ${{ runner.os }}-pio
-                        - uses: actions/setup-python@v4
-                          with:
-                                  python-version: "3.9"
-                        - name: Install PlatformIO Core
-                          run: pip install --upgrade platformio
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.platformio/.cache
+          key: ${{ runner.os }}-pio
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+      - name: Install PlatformIO Core
+        run: pip install --upgrade platformio
 
-                        - name: Build PlatformIO Project
-                          run: pio run
+      - name: Build PlatformIO Project
+        run: pio run
