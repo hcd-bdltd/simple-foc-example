@@ -1,5 +1,5 @@
 /**
- * B-G431B-ESC1 position motion control example with hall sensor
+ * B-G431B-ESC1 velocity control example with hall sensor
  *
  */
 
@@ -36,16 +36,10 @@ void doMotor(char *cmd)
 {
 	commander.motor(&motor, cmd);
 }
-void doRadians(char *cmd)
+void doTarget(char *cmd)
 {
 	commander.scalar(&target, cmd);
 };
-void doDegrees(char *cmd)
-{
-	float angle_degrees;
-	commander.scalar(&angle_degrees, cmd);
-	target = angle_degrees * (PI / 180.0);
-}
 
 void checkRC(int rc)
 {
@@ -89,7 +83,7 @@ void setup()
 	motor.linkCurrentSense(&current_sensor);
 
 	// set motion control loop to be used
-	motor.controller = MotionControlType::angle;
+	motor.controller = MotionControlType::velocity;
 	motor.foc_modulation = FOCModulationType::SpaceVectorPWM;
 
 	// index search velocity [rad/s]
@@ -103,9 +97,6 @@ void setup()
 	motor.PID_velocity.D = 0.0f;
 	motor.PID_velocity.output_ramp = 1000.0f;
 	motor.LPF_velocity.Tf = 0.05f;
-
-	// angle P controller
-	motor.P_angle.P = 20.0f;
 
 	// motor limits
 	motor.voltage_limit = 24.0f;
@@ -132,11 +123,10 @@ void setup()
 	// initialize serial communication
 	commander.verbose = VerboseMode::user_friendly;
 	commander.add('M', doMotor, "motor");
-	commander.add('R', doRadians, "target [rad]");
-	commander.add('D', doDegrees, "target [deg]");
+	commander.add('T', doTarget, "target [rad/s]");
 
 	SIMPLEFOC_DEBUG("Setup ready.");
-	SIMPLEFOC_DEBUG("Set the target angle using serial terminal:");
+	SIMPLEFOC_DEBUG("Set the target using serial terminal:");
 	_delay(1000);
 	monitor_delay = millis();
 }
