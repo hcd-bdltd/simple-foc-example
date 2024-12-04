@@ -2,15 +2,15 @@
 # To learn more about the format of this file, see https://docs.trunk.io/reference/trunk-yaml
 version: 0.1
 cli:
-  version: 1.22.1
+  version: 1.22.8
 # Trunk provides extensibility via plugins. (https://docs.trunk.io/plugins)
 plugins:
   sources:
     - id: configs
-      ref: v1.0.4
+      ref: v1.0.9
       uri: https://github.com/trunk-io/configs
     - id: trunk
-      ref: v1.5.0
+      ref: v1.6.5
       uri: https://github.com/trunk-io/plugins
 # Many linters and tools depend on runtimes - configure them here. (https://docs.trunk.io/runtimes)
 runtimes:
@@ -20,15 +20,15 @@ runtimes:
 # This is the section where you manage your linters. (https://docs.trunk.io/check/configuration)
 lint:
   enabled:
-    - semgrep@1.72.0
+    - semgrep@1.97.0
     - clang-format@16.0.3
-    - actionlint@1.7.0
-    - checkov@3.2.87
+    - actionlint@1.7.4
+    - checkov@3.2.327
     - git-diff-check
-    - markdownlint@0.40.0
-    - prettier@3.2.5
-    - trivy@0.51.1
-    - trufflehog@3.75.1
+    - markdownlint@0.43.0
+    - prettier@3.4.1
+    - trivy@0.56.2
+    - trufflehog@3.84.2
     - yamllint@1.35.1
 actions:
   enabled:

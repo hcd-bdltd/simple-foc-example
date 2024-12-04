@@ -15,5 +15,8 @@ check:
 
 qa: dev fmt check
 
+upload:
+	pio run -t upload
+
 conn:
-	picocom -b 115200 /dev/ttyACM0
+	tio /dev/ttyACM0
